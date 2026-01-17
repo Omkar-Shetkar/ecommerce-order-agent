@@ -9,7 +9,7 @@ public class RuleBook {
     @LlmTool(description = "Rules to decide whether an item is eligible for replacement or not")
     public String rules() {
         return """
-                - Consumable items aren't eligible for replacement.
+                - Eatable items aren't eligible for replacement.
                 - All other items are eligible for replacement.
                 """;
     }

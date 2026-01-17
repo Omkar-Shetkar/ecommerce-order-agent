@@ -7,6 +7,7 @@ import com.embabel.agent.api.common.Ai;
 import com.embabel.agent.domain.io.UserInput;
 import com.embabel.agent.prompt.persona.Persona;
 import com.embabel.common.ai.model.LlmOptions;
+import com.embabel.template.ecommerce.Inventory;
 import com.embabel.template.ecommerce.Orders;
 import com.embabel.template.ecommerce.RuleBook;
 
@@ -25,10 +26,12 @@ public class OrderSupportAgent {
 
     private final RuleBook ruleBook;
     private final Orders orders;
+    private final Inventory inventory;
 
-    public OrderSupportAgent(RuleBook ruleBook, Orders orders) {
+    public OrderSupportAgent(RuleBook ruleBook, Orders orders, Inventory inventory) {
         this.ruleBook = ruleBook;
         this.orders = orders;
+        this.inventory = inventory;
     }
 
     record ReplacementReport(String text) {}
@@ -44,11 +47,11 @@ public class OrderSupportAgent {
                         .withTemperature(0.5)
                 )
                 .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
-                .withToolObjects(List.of(ruleBook, orders))
+                .withToolObjects(List.of(ruleBook, inventory, orders))
                 .createObject(String.format("""
                         Customer has requested for order replacement.
                         Check whether customer order is valid using orders.
-                        If yes, check whether the item is replaceable using rule book.
+                        If yes, check whether the item is replaceable using rule book and inventory.
                         # User input
                         %s
                         """,
