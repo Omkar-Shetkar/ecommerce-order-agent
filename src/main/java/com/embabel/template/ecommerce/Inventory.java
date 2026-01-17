@@ -29,7 +29,7 @@ public class Inventory {
                 new Item("ITM016", "Cookies Oreo Pack", 140),
                 new Item("ITM017", "Bread White Loaf", 90),
                 new Item("ITM018", "Cheese Slice Pack", 70),
-                new Item("ITM019", "Chips Lays Salted", 200),
+                new Item("ITM019", "Apple iPhone", 200),
                 new Item("ITM020", "Ice Cream Vanilla Tub", 40)
         );
     }
