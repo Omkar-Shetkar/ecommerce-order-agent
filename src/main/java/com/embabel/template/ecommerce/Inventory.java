@@ -11,7 +11,7 @@ public class Inventory {
     @LlmTool(description = "List of items with code, name, and stock")
     public List<Item> items() {
         return List.of(
-                new Item("ITM001", "Laptop Dell XPS", 50),
+                new Item("ITM001", "Laptop Dell XPS", 0),
                 new Item("ITM002", "Mouse Wireless", 120),
                 new Item("ITM003", "Keyboard Mechanical", 80),
                 new Item("ITM004", "Monitor 24in", 30),

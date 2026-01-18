@@ -20,7 +20,15 @@ abstract class Personas {
             "Professional and helpful",
             "Help customer on his/her order replacement"
     );
+
+    static final Persona STORE_REPRESENTATIVE = Persona.create(
+            "Store Representative",
+            "Store Representative",
+            "Professional and precise",
+            "Help Customer Representative with order replacement delivery"
+    );
 }
+
 @Agent(description = "Support agent to check replacement of items and schedule delivery of replacement item")
 public class OrderSupportAgent {
 
@@ -34,12 +42,18 @@ public class OrderSupportAgent {
         this.inventory = inventory;
     }
 
-    record ReplacementReport(String text) {}
+    record ReplacementReport(String text) {
+    }
 
-    @AchievesGoal(
-            description = "Customer representative decides whether item is replaceable or not")
+    record StockReport(String text) {
+    }
+
+    record DeliveryReport(String text) {
+    }
+
+
     @Action
-    ReplacementReport verifyReplacementRequest(UserInput userInput, Ai ai){
+    ReplacementReport replacementReport(UserInput userInput, Ai ai) {
         return ai
                 // Medium temperature for accuracy
                 .withLlm(LlmOptions
@@ -49,14 +63,56 @@ public class OrderSupportAgent {
                 .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
                 .withToolObjects(List.of(ruleBook, inventory, orders))
                 .createObject(String.format("""
-                        Customer has requested for order replacement.
-                        Check whether customer order is valid using orders.
-                        If yes, check whether the item is replaceable using rule book and inventory.
-                        # User input
+                        Process customer replacement request following standard procedure:
+                        
+                        1. Validate order exists in order history using 'orders' tool by matching OrderId
+                        2. Fetch item name for the item code using 'inventory' tool
+                        3. Confirm item qualifies per replacement policy using 'ruleBook' tool
+                        4. Final report should contain whether items in the customer order eligible for replacement or not.
+                        If an item is not eligible for replacement give the reason for the same.
+                        
+                        Customer request details:
                         %s
-                        """,
-                        userInput.getContent()
-                ).trim(), ReplacementReport.class);
+                        
+                        Provide replacement decision with reasoning.
+                        """, userInput.getContent()).trim(), ReplacementReport.class);
+    }
+
+
+    @Action
+    StockReport stockReport(ReplacementReport replacementReport, Ai ai) {
+        return ai
+                .withAutoLlm()
+                .withPromptContributor(Personas.STORE_REPRESENTATIVE)
+                .withToolObjects(List.of(ruleBook, inventory, orders))
+                .createObject(String.format("""
+                                 Process Replacement Report using following standard procedure:
+                                
+                                 Replacement Report: %s
+                                
+                                - Check whether stock is available for the item using 'inventory' tool
+                                - Create Stock report with availability details of the item
+                                """, replacementReport.text())
+                        .trim(), StockReport.class);
+    }
+
+    @AchievesGoal(
+            description = "Order eligibility for replacement verified, stock availability checked, replacement delivery date confirmed")
+    @Action
+    DeliveryReport deliveryReport(StockReport stockReport, Ai ai) {
+        return ai
+                .withAutoLlm()
+                .withPromptContributor(Personas.STORE_REPRESENTATIVE)
+                .withToolObjects(List.of(ruleBook, inventory, orders))
+                .createObject(String.format("""
+                                Process Stock Report using following standard procedure:
+                                
+                                Stock Report: %s
+                                
+                                1. If stock is available, create Delivery report with replacement delivery date
+                                2. If stock is not available, create Delivery report of non-availability of item
+                                """, stockReport.text())
+                        .trim(), DeliveryReport.class);
     }
 
 
