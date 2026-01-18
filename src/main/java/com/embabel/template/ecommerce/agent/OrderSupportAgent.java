@@ -42,13 +42,16 @@ public class OrderSupportAgent {
         this.inventory = inventory;
     }
 
-    record ReplacementReport(String text) {
+    public record ReplacementReport(String text) {
     }
 
-    record StockReport(String text) {
+    public record StockReport(String text) {
     }
 
-    record DeliveryReport(String text) {
+    public record DeliveryReport(String text) {
+    }
+
+    public record CustomerConfirmationReport(String text) {
     }
 
 
@@ -78,6 +81,21 @@ public class OrderSupportAgent {
                         """, userInput.getContent()).trim(), ReplacementReport.class);
     }
 
+    @AchievesGoal(description = "Ineligible item replacement request handled")
+    @Action
+    public CustomerConfirmationReport handleIneligible(ReplacementReport replacementReport, Ai ai) {
+        return ai
+                .withAutoLlm()
+                .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
+                .createObject(String.format("""
+                                Compose a reply mail to customer notifying ineligiblility of replacement of the order items.
+                                
+                                Replacement Report: %s
+                                
+                                """, replacementReport.text())
+                        .trim(), CustomerConfirmationReport.class);
+    }
+
 
     @Action
     StockReport stockReport(ReplacementReport replacementReport, Ai ai) {
@@ -96,8 +114,21 @@ public class OrderSupportAgent {
                         .trim(), StockReport.class);
     }
 
-    @AchievesGoal(
-            description = "Order eligibility for replacement verified, stock availability checked, replacement delivery date confirmed")
+    @AchievesGoal(description = "No stock of items handled")
+    @Action
+    public CustomerConfirmationReport handleNoStock(StockReport stockReport, Ai ai) {
+        return ai
+                .withAutoLlm()
+                .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
+                .createObject(String.format("""
+                                Compose a reply mail to customer notifying of no stock of items.
+                                
+                                Stock Report: %s
+                                
+                                """, stockReport.text())
+                        .trim(), CustomerConfirmationReport.class);
+    }
+
     @Action
     DeliveryReport deliveryReport(StockReport stockReport, Ai ai) {
         return ai
@@ -113,6 +144,21 @@ public class OrderSupportAgent {
                                 2. If stock is not available, create Delivery report of non-availability of item
                                 """, stockReport.text())
                         .trim(), DeliveryReport.class);
+    }
+
+    @AchievesGoal(description = "Eligible replacement and delivery confirmed")
+    @Action
+    CustomerConfirmationReport handleDelivery(DeliveryReport deliveryReport, Ai ai) {
+        return ai
+                .withAutoLlm()
+                .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
+                .createObject(String.format("""
+                                Compose a reply mail to customer confirming replacement with delivery details.
+                                
+                                Delivery Report: %s
+                                
+                                """, deliveryReport.text())
+                        .trim(), CustomerConfirmationReport.class);
     }
 
 
