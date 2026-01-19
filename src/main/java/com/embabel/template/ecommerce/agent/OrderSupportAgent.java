@@ -54,48 +54,14 @@ public class OrderSupportAgent {
     public record CustomerConfirmationReport(String text) {
     }
 
-
     @Action
-    ReplacementReport replacementReport(UserInput userInput, Ai ai) {
-        return ai
-                // Medium temperature for accuracy
-                .withLlm(LlmOptions
-                        .withAutoLlm()
-                        .withTemperature(0.5)
-                )
-                .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
+    public ReplacementReport replacementReport(UserInput userInput, Ai ai) {
+        return ai.withAutoLlm()
                 .withToolObjects(List.of(ruleBook, inventory, orders))
                 .createObject(String.format("""
-                        Process customer replacement request following standard procedure:
-                        
-                        1. Validate order exists in order history using 'orders' tool by matching OrderId
-                        2. Fetch item name for the item code using 'inventory' tool
-                        3. Confirm item qualifies per replacement policy using 'ruleBook' tool
-                        4. Final report should contain whether items in the customer order eligible for replacement or not.
-                        If an item is not eligible for replacement give the reason for the same.
-                        
-                        Customer request details:
-                        %s
-                        
-                        Provide replacement decision with reasoning.
-                        """, userInput.getContent()).trim(), ReplacementReport.class);
+                        Verify eligibility for: %s
+                        """, userInput.getContent()), ReplacementReport.class);
     }
-
-    @AchievesGoal(description = "Ineligible item replacement request handled")
-    @Action
-    public CustomerConfirmationReport handleIneligible(ReplacementReport replacementReport, Ai ai) {
-        return ai
-                .withAutoLlm()
-                .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
-                .createObject(String.format("""
-                                Compose a reply mail to customer notifying ineligiblility of replacement of the order items.
-                                
-                                Replacement Report: %s
-                                
-                                """, replacementReport.text())
-                        .trim(), CustomerConfirmationReport.class);
-    }
-
 
     @Action
     StockReport stockReport(ReplacementReport replacementReport, Ai ai) {
@@ -103,30 +69,7 @@ public class OrderSupportAgent {
                 .withAutoLlm()
                 .withPromptContributor(Personas.STORE_REPRESENTATIVE)
                 .withToolObjects(List.of(ruleBook, inventory, orders))
-                .createObject(String.format("""
-                                 Process Replacement Report using following standard procedure:
-                                
-                                 Replacement Report: %s
-                                
-                                - Check whether stock is available for the item using 'inventory' tool
-                                - Create Stock report with availability details of the item
-                                """, replacementReport.text())
-                        .trim(), StockReport.class);
-    }
-
-    @AchievesGoal(description = "No stock of items handled")
-    @Action
-    public CustomerConfirmationReport handleNoStock(StockReport stockReport, Ai ai) {
-        return ai
-                .withAutoLlm()
-                .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
-                .createObject(String.format("""
-                                Compose a reply mail to customer notifying of no stock of items.
-                                
-                                Stock Report: %s
-                                
-                                """, stockReport.text())
-                        .trim(), CustomerConfirmationReport.class);
+                .createObject("Check stock for: " + replacementReport.text(), StockReport.class);
     }
 
     @Action
@@ -135,29 +78,16 @@ public class OrderSupportAgent {
                 .withAutoLlm()
                 .withPromptContributor(Personas.STORE_REPRESENTATIVE)
                 .withToolObjects(List.of(ruleBook, inventory, orders))
-                .createObject(String.format("""
-                                Process Stock Report using following standard procedure:
-                                
-                                Stock Report: %s
-                                
-                                1. If stock is available, create Delivery report with replacement delivery date
-                                2. If stock is not available, create Delivery report of non-availability of item
-                                """, stockReport.text())
-                        .trim(), DeliveryReport.class);
+                .createObject("Confirm delivery details: " + stockReport.text(), DeliveryReport.class);
     }
 
-    @AchievesGoal(description = "Eligible replacement and delivery confirmed")
+    @AchievesGoal(description = "Checked for eligibility, stock, delivery schedule")
     @Action
-    CustomerConfirmationReport handleDelivery(DeliveryReport deliveryReport, Ai ai) {
+    CustomerConfirmationReport customerConfirmationReport(DeliveryReport deliveryReport, Ai ai) {
         return ai
                 .withAutoLlm()
                 .withPromptContributor(Personas.CUSTOMER_REPRESENTATIVE)
-                .createObject(String.format("""
-                                Compose a reply mail to customer confirming replacement with delivery details.
-                                
-                                Delivery Report: %s
-                                
-                                """, deliveryReport.text())
+                .createObject(String.format("Compose a reply mail to customer: " + deliveryReport.text())
                         .trim(), CustomerConfirmationReport.class);
     }
 
